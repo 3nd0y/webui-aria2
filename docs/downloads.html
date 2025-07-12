@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Downloads</title>
+  <style>
+body {
+  font-family: sans-serif;
+  background-color: #f9f9f9;
+  padding: 2rem;
+  color: #333;
+  margin: 0;
+}
+
+/* Bungkus tabel agar bisa discroll horizontal di layar kecil */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* lebih halus di iOS */
+}
+
+/* Tabel */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  min-width: 600px; /* Tambahan agar scroll muncul jika layar terlalu sempit */
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  font-size: 16px; /* Ukuran font konsisten */
+}
+
+th {
+  background-color: #00897b;
+  cursor: pointer;
+  user-select: none;
+  color: white;
+}
+
+th:hover {
+  background-color: #00695c;
+}
+
+tr:hover {
+  background-color: #f5f5f5;
+}
+
+a {
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Responsif: hanya sesuaikan padding */
+@media (max-width: 480px) {
+  body {
+    padding: 1rem;
+  }
+
+  th, td {
+    padding: 12px;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div style="background-color: #00897b; padding: 1px;">
+    <h1 style="margin-left: 10px; color: white;">Downloads Folder</h1>
+  </div>
+  <div class="table-container">
+    <table id="file-table">
+      <thead style="color: white;">
+        <tr>
+          <th onclick="sortTable('name')">Filename</th>
+          <th onclick="sortTable('size')">Size</th>
+          <th onclick="sortTable('type')">Type</th>
+        </tr>
+      </thead>
+      <tbody id="file-list">
+        <!-- rows will be added here -->
+      </tbody>
+    </table>  
+  </div>  
+  
+
+  <script>
+    let sortState = {
+      name: 'asc',
+      size: 'asc',
+      type: 'asc'
+    };
+
+    let fileData = [];
+
+    function fetchFiles() {
+      fetch('/api/downloads')
+        .then(res => res.json())
+        .then(files => {
+          fileData = files;
+          renderTable(fileData);
+        });
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('file-list');
+      tbody.innerHTML = '';
+      data.forEach(file => {
+        const tr = document.createElement('tr');
+
+        const nameTd = document.createElement('td');
+        const link = document.createElement('a');
+        link.href = '/downloads/' + encodeURIComponent(file.name);
+        link.textContent = file.name;
+        link.download = file.name;
+        nameTd.appendChild(link);
+
+        const sizeTd = document.createElement('td');
+        sizeTd.textContent = file.isDirectory ? '-' : formatBytes(file.size);
+
+        const typeTd = document.createElement('td');
+        typeTd.textContent = file.isDirectory ? 'Folder' : getFileExtension(file.name);
+
+        tr.appendChild(nameTd);
+        tr.appendChild(sizeTd);
+        tr.appendChild(typeTd);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function sortTable(key) {
+      const direction = sortState[key];
+      fileData.sort((a, b) => {
+        let valA, valB;
+
+        if (key === 'name') {
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+        } else if (key === 'size') {
+          valA = a.size;
+          valB = b.size;
+        } else if (key === 'type') {
+          valA = getFileExtension(a.name);
+          valB = getFileExtension(b.name);
+        }
+
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      sortState[key] = direction === 'asc' ? 'desc' : 'asc';
+      renderTable(fileData);
+    }
+
+    function getFileExtension(filename) {
+      const dot = filename.lastIndexOf('.');
+      return dot === -1 ? '' : filename.substring(dot + 1).toUpperCase();
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024,
+        sizes = ['B', 'KB', 'MB', 'GB', 'TB'],
+        i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    fetchFiles();
+  </script>
+</body>
+</html>
